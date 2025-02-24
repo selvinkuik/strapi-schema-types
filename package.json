@@ -1,33 +1,42 @@
 {
   "name": "strapi-schema-types",
-  "author": "Ar-mane",
   "version": "1.0.2",
-  "description": "Typescript interface generator for Strapi 5 models",
+  "description": "Typescript interface generator for Strapi schema",
   "main": "./dist/index.js",
+  "types": "./dist/types.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "cp -r src/v5 dist && tsc",
+    "prepare": "npm run build",
+    "watch": "pnpm build -w",
+    "format": "prettier --write src/**/*.ts"
   },
   "bin": {
     "sst": "./dist/index.js"
   },
+  "author": "Ar-mane",
+  "license": "ISC",
+  "homepage": "https://github.com/Ar-mane/strapi-schema-types#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ar-mane/strapi-schema-types.git"
+  },
+  "keywords": [
+    "api",
+    "codegen",
+    "generator",
+    "interface",
+    "schema",
+    "strapi",
+    "typescript",
+    "types"
+  ],
   "dependencies": {
     "change-case": "^5.4.4",
     "ts-morph": "^12.0.0"
   },
   "devDependencies": {
     "@types/node": "^16.11.7",
+    "prettier": "^3.5.2",
     "typescript": "^4.5.4"
-  },
-  "keywords": [
-    "strapi",
-    "typescript",
-    "types",
-    "generator"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ar-mane/strapi-schema-types.git"
-  },
-  "license": "ISC",
-  "homepage": "https://github.com/Ar-mane/strapi-schema-types#readme"
+  }
 }
