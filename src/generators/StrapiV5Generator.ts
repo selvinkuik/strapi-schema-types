@@ -1,8 +1,8 @@
+import { Config } from '#/Config';
+import { readDirectory, readFile, writeFile } from '#/utils/fs';
+import { interfaceName } from '#/utils/naming';
+import { v5Api } from '#/utils/paths';
 import { join, parse } from 'path';
-import { Config } from '../Config';
-import { readDirectory, readFile, writeFile } from '../utils/fs';
-import { interfaceName } from '../utils/naming';
-import { v5Api } from '../utils/paths';
 import { StrapiGenerator } from './StrapiGenerator';
 
 export class StrapiV5Generator extends StrapiGenerator {
@@ -12,12 +12,14 @@ export class StrapiV5Generator extends StrapiGenerator {
 
   generateDefaultInterfaces(): void {
     try {
-      const v5Files = readDirectory(this.config.sourceFolder);
+      const v5Files = readDirectory(this.config.templatesFolderPath);
       console.log('v5Files:', v5Files);
       v5Files.forEach((file) => {
         const fileName = parse(file).name;
         console.log('fileNamesss:', fileName);
-        const fileContent = readFile(join(this.config.sourceFolder, file));
+        const fileContent = readFile(
+          join(this.config.templatesFolderPath, file)
+        );
         writeFile(join(this.config.outputDir, `${fileName}.ts`), fileContent);
       });
     } catch (error) {

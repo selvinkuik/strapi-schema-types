@@ -1,5 +1,6 @@
+import { Config } from '#/Config';
+import { IStrapiGenerator } from '#/generators/IStrapiGenerator';
 import { existsSync, mkdirSync } from 'fs';
-import { IStrapiGenerator } from './IStrapiGenerator';
 
 export class StrapiGenerator implements IStrapiGenerator {
   constructor(config: Config) {
@@ -15,6 +16,9 @@ export class StrapiGenerator implements IStrapiGenerator {
     throw new Error('Method not implemented.');
   }
   generateSingleTypes(): void {
+    throw new Error('Method not implemented.');
+  }
+  generateRoutes(): void {
     throw new Error('Method not implemented.');
   }
 }
