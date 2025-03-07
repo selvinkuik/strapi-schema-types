@@ -9,7 +9,6 @@
   ],
   "scripts": {
     "build": "pnpm clean && pnpm copy-templates && tsc && tsc-alias",
-    "watch": "concurrently -m 1 \"pnpm clean && pnpm copy-templates && tsc -w\" \"tsc-alias -w\"",
     "copy-templates": "mkdirp -p dist/templates && cp -r src/templates dist",
     "prepare": "npm run build",
     "format": "prettier --write src/**/*.ts",
@@ -41,7 +40,6 @@
   },
   "devDependencies": {
     "@types/node": "^16.11.7",
-    "concurrently": "^9.1.2",
     "mkdirp": "^3.0.1",
     "prettier": "^3.5.2",
     "rimraf": "^6.0.1",

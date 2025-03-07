@@ -7,6 +7,7 @@ interface StrapiSchema {
     pluralName: string;
     description?: string;
   };
+  pluginOptions?: Record<string, any>;
   options?: Record<string, any>;
   attributes: Record<string, Attribute>;
 }
@@ -28,6 +29,7 @@ interface BaseAttribute {
   required?: boolean;
   unique?: boolean;
   default?: any;
+  pluginOptions?: Record<string, any>;
 }
 
 interface StringAttribute extends BaseAttribute {

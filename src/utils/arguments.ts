@@ -1,6 +1,6 @@
 import path from 'path';
-import { StrapiVersion } from './StrapiVersion';
-import { Config } from './Config';
+import { StrapiVersion } from '../StrapiVersion';
+import { Config } from '../Config';
 
 export function getStrapiVersion(args: string[]): StrapiVersion {
   if (args.includes('--v5')) {
@@ -11,9 +11,9 @@ export function getStrapiVersion(args: string[]): StrapiVersion {
 }
 export function getTemplatesFolderPath(args: string[]): string {
   if (args.includes('--v5')) {
-    return path.join(__dirname, '/v5');
+    return path.join(__dirname, '/templates/v5');
   } else {
-    return path.join(__dirname, '/v4');
+    return path.join(__dirname, '/templates/v4');
   }
 }
 export function getPrefix(args: string[]): string {

@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { getConfig } from '#/arguments';
+import { getConfig } from '#/utils/arguments';
 import { Config } from './Config';
 import { StrapiGenerator } from './generators/StrapiGenerator';
 import { StrapiV5Generator } from './generators/StrapiV5Generator';

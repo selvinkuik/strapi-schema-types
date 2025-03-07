@@ -4,19 +4,21 @@ import { interfaceName } from '#/utils/naming';
 import { v5Api } from '#/utils/paths';
 import { join, parse } from 'path';
 import { StrapiGenerator } from './StrapiGenerator';
+import { getSchemaFilePath, readSchema } from '#/utils/schemaUtils';
+import { StrapiSchemaV5Converter } from '#/services/StrapiSchemaV5Converter';
 
 export class StrapiV5Generator extends StrapiGenerator {
+  converter: StrapiSchemaV5Converter;
   constructor(private config: Config) {
     super(config);
+    this.converter = new StrapiSchemaV5Converter(this.config);
   }
 
   generateDefaultInterfaces(): void {
     try {
       const v5Files = readDirectory(this.config.templatesFolderPath);
-      console.log('v5Files:', v5Files);
       v5Files.forEach((file) => {
         const fileName = parse(file).name;
-        console.log('fileNamesss:', fileName);
         const fileContent = readFile(
           join(this.config.templatesFolderPath, file)
         );
@@ -26,6 +28,7 @@ export class StrapiV5Generator extends StrapiGenerator {
       console.error('Error generating types from v5 folder:', error);
     }
   }
+
   generateCollections(): void {
     let apiFolders: string[] = [];
 
@@ -35,15 +38,9 @@ export class StrapiV5Generator extends StrapiGenerator {
 
     for (const apiFolder of apiFolders) {
       const iname = interfaceName(this.config, apiFolder);
-      console.log('interfaceName:', iname);
-
-      // const interfaceContent = createInterface(
-      //   `./src/api/${apiFolder}/content-types/${apiFolder}/schema.json`,
-      //   interfaceName,
-      //   isV5
-      // );
-      // if (interfaceContent)
-      //   fs.writeFileSync(`${outputDir}/${interfaceName}.ts`, interfaceContent);
+      const schema = readSchema(getSchemaFilePath(apiFolder));
+      const interfaceContent = this.converter.interfaceContent(schema, iname);
+      writeFile(`${this.config.outputDir}/${iname}.ts`, interfaceContent);
     }
   }
 

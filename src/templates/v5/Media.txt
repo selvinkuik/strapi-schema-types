@@ -1,4 +1,15 @@
-import { MediaFormat } from "./MediaFormat";
+interface MFormat {
+  ext: string;
+  url: string;
+  hash: string;
+  mime: string;
+  name: string;
+  path: string | null;
+  size: number;
+  width: number;
+  height: number;
+  sizeInBytes: number;
+}
 
 export interface Media {
   id: number;
@@ -9,7 +20,7 @@ export interface Media {
   width: number;
   height: number;
   formats: {
-    thumbnail?: MediaFormat;
+    thumbnail?: MFormat;
   };
   hash: string;
   ext: string;
