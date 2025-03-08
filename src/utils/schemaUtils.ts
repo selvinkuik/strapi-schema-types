@@ -2,12 +2,11 @@ import {
   Attribute,
   ComponentAttribute,
   RelationAttribute,
-  StrapiSchema,
-  StringAttribute,
+  StrapiSchema
 } from '#/types';
 import { readFile } from '#/utils/fs';
 import { join } from 'path';
-import { v5Api } from './paths';
+import { v5SrcFolder } from './paths';
 
 export function readSchema(filePath: string): StrapiSchema {
   const schemaContent = readFile(filePath);
@@ -15,7 +14,13 @@ export function readSchema(filePath: string): StrapiSchema {
 }
 
 export function getSchemaFilePath(apiFolder: string): string {
-  return join(v5Api, apiFolder, 'content-types', apiFolder, 'schema.json');
+  return join(
+    v5SrcFolder.api,
+    apiFolder,
+    'content-types',
+    apiFolder,
+    'schema.json'
+  );
 }
 
 export function isOptional(attributeValue: Attribute): boolean {

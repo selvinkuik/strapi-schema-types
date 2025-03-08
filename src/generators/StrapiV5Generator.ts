@@ -1,11 +1,11 @@
 import { Config } from '#/Config';
-import { readDirectory, readFile, writeFile } from '#/utils/fs';
+import { StrapiSchemaV5Converter } from '#/services/StrapiSchemaV5Converter';
+import { getApiFolders, readDirectory, readFile, writeFile } from '#/utils/fs';
 import { interfaceName } from '#/utils/naming';
-import { v5Api } from '#/utils/paths';
+import { v5SrcFolder } from '#/utils/paths';
+import { getSchemaFilePath, readSchema } from '#/utils/schemaUtils';
 import { join, parse } from 'path';
 import { StrapiGenerator } from './StrapiGenerator';
-import { getSchemaFilePath, readSchema } from '#/utils/schemaUtils';
-import { StrapiSchemaV5Converter } from '#/services/StrapiSchemaV5Converter';
 
 export class StrapiV5Generator extends StrapiGenerator {
   converter: StrapiSchemaV5Converter;
@@ -22,6 +22,7 @@ export class StrapiV5Generator extends StrapiGenerator {
         const fileContent = readFile(
           join(this.config.templatesFolderPath, file)
         );
+        // replace the prefix in the template with the actual prefix in $fileContent  fileName by '${prefix}${fileName}'
         writeFile(join(this.config.outputDir, `${fileName}.ts`), fileContent);
       });
     } catch (error) {
@@ -32,14 +33,12 @@ export class StrapiV5Generator extends StrapiGenerator {
   generateCollections(): void {
     let apiFolders: string[] = [];
 
-    apiFolders = readDirectory(v5Api).filter(
-      (directory) => !directory.startsWith('.')
-    );
+    apiFolders = getApiFolders(readDirectory(v5SrcFolder.api));
 
     for (const apiFolder of apiFolders) {
       const iname = interfaceName(this.config, apiFolder);
       const schema = readSchema(getSchemaFilePath(apiFolder));
-      const interfaceContent = this.converter.interfaceContent(schema, iname);
+      const interfaceContent = this.converter.generateInterfaceFromSchema(schema, iname);
       writeFile(`${this.config.outputDir}/${iname}.ts`, interfaceContent);
     }
   }

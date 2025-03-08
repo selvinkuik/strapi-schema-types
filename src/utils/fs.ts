@@ -25,3 +25,7 @@ export function readFile(filePath: string): string {
     return '';
   }
 }
+
+export function getApiFolders(directories: string[]): string[] {
+  return directories.filter((directory) => !directory.startsWith('.'));
+}

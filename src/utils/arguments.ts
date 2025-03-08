@@ -11,11 +11,12 @@ export function getStrapiVersion(args: string[]): StrapiVersion {
 }
 export function getTemplatesFolderPath(args: string[]): string {
   if (args.includes('--v5')) {
-    return path.join(__dirname, '/templates/v5');
+    return path.join(__dirname, '../templates/v5');
   } else {
-    return path.join(__dirname, '/templates/v4');
+    return path.join(__dirname, '../templates/v4');
   }
 }
+
 export function getPrefix(args: string[]): string {
   return args.find((arg) => arg.startsWith('--prefix='))?.split('=')[1] || '';
 }

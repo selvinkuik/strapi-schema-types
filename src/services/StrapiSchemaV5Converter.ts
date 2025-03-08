@@ -12,7 +12,10 @@ interface ImportInfo {
 export class StrapiSchemaV5Converter {
   constructor(private config: Config) {}
 
-  public interfaceContent(schema: StrapiSchema, interfaceName: string): string {
+  public generateInterfaceFromSchema(
+    schema: StrapiSchema,
+    interfaceName: string
+  ): string {
     const project = new Project();
     const sourceFile = project.createSourceFile('temp.ts');
 
