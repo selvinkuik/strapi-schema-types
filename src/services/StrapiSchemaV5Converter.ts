@@ -1,8 +1,19 @@
 import { Config } from '#/Config';
-import { DynamicZoneAttribute, StrapiSchema } from '#/types';
+import {
+  ComponentAttribute,
+  DynamicZoneAttribute,
+  RelationAttribute,
+  StrapiSchema,
+} from '#/types';
 import { isOptional } from '#/utils/schemaUtils';
 import { pascalCase } from 'change-case';
-import { Project } from 'ts-morph';
+import {
+  InterfaceDeclaration,
+  Project,
+  PropertySignatureStructure,
+  SourceFile,
+  StructureKind,
+} from 'ts-morph';
 
 interface ImportInfo {
   type: string;
@@ -12,126 +23,171 @@ interface ImportInfo {
 export class StrapiSchemaV5Converter {
   constructor(private config: Config) {}
 
+  private createPropertySignature(
+    properties: PropertySignatureStructure[],
+    attributeName: string,
+    propertyType: string,
+    hasQuestionToken: boolean = false
+  ) {
+    properties.push({
+      name: attributeName,
+      type: propertyType,
+      kind: StructureKind.PropertySignature,
+      hasQuestionToken: hasQuestionToken,
+    });
+  }
+  private extractPropertiesAndImports(schema: StrapiSchema): {
+    properties: PropertySignatureStructure[];
+    imports: ImportInfo[];
+  } {
+    const properties: PropertySignatureStructure[] = [];
+    const imports: ImportInfo[] = [];
+    const attributesEntries = Object.entries(schema.attributes);
+
+    for (const [attributeName, attributeValue] of attributesEntries) {
+      const propertyType = this.resolvePropertyType(attributeValue, imports);
+      this.createPropertySignature(
+        properties,
+        attributeName,
+        propertyType,
+        isOptional(attributeValue)
+      );
+    }
+
+    return { properties, imports };
+  }
+
+  private resolvePropertyType(
+    attributeValue: any,
+    imports: ImportInfo[]
+  ): string {
+    switch (attributeValue.type) {
+      case 'relation':
+        return this.handleRelation(attributeValue, imports);
+      case 'component':
+        return this.handleComponent(attributeValue, imports);
+      case 'dynamiczone':
+        return this.handleDynamicZone(attributeValue, imports);
+      case 'media':
+        return this.handleMedia(attributeValue, imports);
+      case 'enumeration':
+        return this.handleEnumeration(attributeValue);
+      case 'string':
+      case 'text':
+      case 'richtext':
+      case 'email':
+      case 'uid':
+        return 'string';
+      case 'integer':
+      case 'biginteger':
+      case 'decimal':
+      case 'float':
+        return 'number';
+      case 'date':
+      case 'datetime':
+      case 'time':
+        return 'Date';
+      case 'boolean':
+        return 'boolean';
+      default:
+        return 'any';
+    }
+  }
+
   public generateInterfaceFromSchema(
     schema: StrapiSchema,
     interfaceName: string
   ): string {
     const project = new Project();
-    const sourceFile = project.createSourceFile('temp.ts');
+    const sourceFile = project.createSourceFile('__tmp__.ts');
 
     const interfaceDeclaration = sourceFile.addInterface({
       name: interfaceName,
       isExported: true,
     });
 
-    interfaceDeclaration.addProperty({
-      name: 'id',
-      type: 'number',
-    });
+    this.addBaseProperties(interfaceDeclaration);
+    const { properties, imports } = this.extractPropertiesAndImports(schema);
 
-    const attributesProperty = interfaceDeclaration.addProperty({
-      name: 'attributes',
-      type: '{}', // Placeholder, will be refined
-    });
-
-    const attributesInterface = sourceFile.addInterface({
-      name: `${interfaceName}Attributes`,
-      isExported: false, // Not exported directly
-    });
-
-    attributesProperty.setType(attributesInterface.getName()); // Link attributes property to the new interface
-
-    const imports: ImportInfo[] = [];
-
-    for (const [attributeName, attributeValue] of Object.entries(
-      schema.attributes
-    )) {
-      const propertyName = isOptional(attributeValue)
-        ? `${attributeName}?`
-        : attributeName;
-      let propertyType: string = 'any';
-
-      switch (attributeValue.type) {
-        case 'relation':
-          propertyType = this.handleRelation(attributeValue, imports);
-          break;
-        case 'component':
-          propertyType = this.handleComponent(attributeValue, imports);
-          break;
-        case 'dynamiczone':
-          propertyType = this.handleDynamicZone(attributeValue, imports);
-          break;
-        case 'media':
-          propertyType = this.handleMedia(attributeValue);
-          break;
-        case 'enumeration':
-          propertyType = this.handleEnumeration(attributeValue);
-          break;
-        case 'string':
-        case 'text':
-        case 'richtext':
-        case 'email':
-        case 'uid':
-          propertyType = 'string';
-          break;
-        case 'integer':
-        case 'biginteger':
-        case 'decimal':
-        case 'float':
-          propertyType = 'number';
-          break;
-        case 'date':
-        case 'datetime':
-        case 'time':
-          propertyType = 'Date';
-          break;
-        case 'boolean':
-          propertyType = 'boolean';
-          break;
-        default:
-          break;
-      }
-
-      attributesInterface.addProperty({
-        name: propertyName,
-        type: propertyType,
-      });
-    }
-
-    if (schema.pluginOptions?.i18n?.localized) {
-      attributesInterface.addProperty({ name: 'locale', type: 'string' });
-      attributesInterface.addProperty({
-        name: 'localizations?',
-        type: `${interfaceName}[]`,
-      });
-    }
-
-    // Add imports
-    imports.forEach((importInfo) => {
-      sourceFile.addImportDeclaration({
-        moduleSpecifier: importInfo.path,
-        namedImports: [importInfo.type],
-      });
-    });
+    this.addI18nProperties(schema, properties, interfaceName);
+    interfaceDeclaration.addProperties(properties);
+    this.addImportDeclarations(sourceFile, imports);
+    this.addTimestampProperties(interfaceDeclaration);
 
     return sourceFile.getText();
   }
 
-  // Helper functions for attribute type handling (example)
-  private handleRelation(attributeValue: any, imports: ImportInfo[]): string {
+  private addI18nProperties(
+    schema: StrapiSchema,
+    properties: PropertySignatureStructure[],
+    interfaceName: string
+  ) {
+    if (schema.pluginOptions?.i18n?.localized) {
+      this.createPropertySignature(properties, 'locale', 'string');
+      this.createPropertySignature(
+        properties,
+        'localizations',
+        `${interfaceName}[]`,
+        true
+      );
+    }
+  }
+  private addBaseProperties(interfaceDeclaration: InterfaceDeclaration) {
+    interfaceDeclaration.addProperties([
+      {
+        name: 'id',
+        type: 'number',
+      },
+      {
+        name: 'documentId',
+        type: 'string',
+      },
+    ]);
+  }
+
+  private addTimestampProperties(interfaceDeclaration: InterfaceDeclaration) {
+    interfaceDeclaration.addProperties([
+      {
+        name: 'createdAt',
+        type: 'Date',
+      },
+      {
+        name: 'updatedAt',
+        type: 'Date',
+      },
+      {
+        name: 'publishedAt',
+        type: 'Date',
+      },
+    ]);
+  }
+
+  private addImportDeclarations(sourceFile: SourceFile, imports: ImportInfo[]) {
+    sourceFile.addImportDeclarations(
+      imports.map(({ path, type }) => ({
+        moduleSpecifier: path,
+        namedImports: [type],
+      }))
+    );
+  }
+
+  private handleRelation(
+    attributeValue: RelationAttribute,
+    imports: ImportInfo[]
+  ): string {
     const targetType = attributeValue.target.includes('::user')
       ? 'User'
       : pascalCase(attributeValue.target.split('.')[1]);
     this.addImport(imports, targetType, `./${targetType}`);
     const isArray = attributeValue.relation.endsWith('ToMany');
-    return `{ data: ${targetType}${isArray ? '[]' : ''} }`;
+    return `${targetType}${isArray ? '[]' : ''}`;
   }
 
-  private handleComponent(attributeValue: any, imports: ImportInfo[]): string {
-    const componentType =
-      attributeValue.target === 'plugin::users-permissions.user'
-        ? 'User'
-        : pascalCase(attributeValue.component.split('.')[1]);
+  private handleComponent(
+    attributeValue: ComponentAttribute,
+    imports: ImportInfo[]
+  ): string {
+    const componentType = pascalCase(attributeValue.component.split('.')[1]);
     this.addImport(imports, componentType, `./components/${componentType}`);
     const isArray = attributeValue.repeatable;
     return `${componentType}${isArray ? '[]' : ''}`;
@@ -148,11 +204,13 @@ export class StrapiSchemaV5Converter {
     componentTypes.forEach((componentType) =>
       this.addImport(imports, componentType, `./components/${componentType}`)
     );
+    // this is not correct for now , they are  i preleave wrapped in {id:string, __component: 'componentName'}
     return `${componentTypes.join(' | ')}[]`;
   }
 
-  private handleMedia(attributeValue: any): string {
-    return `{ data: Media${attributeValue.multiple ? '[]' : ''} }`;
+  private handleMedia(attributeValue: any, imports: ImportInfo[]): string {
+    this.addImport(imports, 'Media', `./Media`);
+    return `Media${attributeValue.multiple ? '[]' : ''}`;
   }
 
   private handleEnumeration(attributeValue: any): string {
