@@ -1,7 +1,10 @@
 import { Config } from '#/Config';
 import {
+  Attribute,
   ComponentAttribute,
   DynamicZoneAttribute,
+  EnumerationAttribute,
+  MediaAttribute,
   RelationAttribute,
   StrapiSchema,
 } from '#/types';
@@ -9,7 +12,6 @@ import { isOptional } from '#/utils/schemaUtils';
 import { pascalCase } from 'change-case';
 import {
   InterfaceDeclaration,
-  Project,
   PropertySignatureStructure,
   SourceFile,
   StructureKind,
@@ -20,10 +22,12 @@ interface ImportInfo {
   path: string;
 }
 
-export class StrapiSchemaV5Converter {
+export class AbstractV5Converter {
+  componentsFolder: string = '.';
+  interfaceFolder: string = '.';
   constructor(private config: Config) {}
 
-  private createPropertySignature(
+  protected createPropertySignature(
     properties: PropertySignatureStructure[],
     attributeName: string,
     propertyType: string,
@@ -36,7 +40,7 @@ export class StrapiSchemaV5Converter {
       hasQuestionToken: hasQuestionToken,
     });
   }
-  private extractPropertiesAndImports(schema: StrapiSchema): {
+  protected extractPropertiesAndImports(schema: StrapiSchema): {
     properties: PropertySignatureStructure[];
     imports: ImportInfo[];
   } {
@@ -57,8 +61,8 @@ export class StrapiSchemaV5Converter {
     return { properties, imports };
   }
 
-  private resolvePropertyType(
-    attributeValue: any,
+  protected resolvePropertyType(
+    attributeValue: Attribute,
     imports: ImportInfo[]
   ): string {
     switch (attributeValue.type) {
@@ -94,30 +98,7 @@ export class StrapiSchemaV5Converter {
     }
   }
 
-  public generateInterfaceFromSchema(
-    schema: StrapiSchema,
-    interfaceName: string
-  ): string {
-    const project = new Project();
-    const sourceFile = project.createSourceFile('__tmp__.ts');
-
-    const interfaceDeclaration = sourceFile.addInterface({
-      name: interfaceName,
-      isExported: true,
-    });
-
-    this.addBaseProperties(interfaceDeclaration);
-    const { properties, imports } = this.extractPropertiesAndImports(schema);
-
-    this.addI18nProperties(schema, properties, interfaceName);
-    interfaceDeclaration.addProperties(properties);
-    this.addImportDeclarations(sourceFile, imports);
-    this.addTimestampProperties(interfaceDeclaration);
-
-    return sourceFile.getText();
-  }
-
-  private addI18nProperties(
+  protected addI18nProperties(
     schema: StrapiSchema,
     properties: PropertySignatureStructure[],
     interfaceName: string
@@ -132,7 +113,7 @@ export class StrapiSchemaV5Converter {
       );
     }
   }
-  private addBaseProperties(interfaceDeclaration: InterfaceDeclaration) {
+  protected addBaseProperties(interfaceDeclaration: InterfaceDeclaration) {
     interfaceDeclaration.addProperties([
       {
         name: 'id',
@@ -145,7 +126,7 @@ export class StrapiSchemaV5Converter {
     ]);
   }
 
-  private addTimestampProperties(interfaceDeclaration: InterfaceDeclaration) {
+  protected addTimestampProperties(interfaceDeclaration: InterfaceDeclaration) {
     interfaceDeclaration.addProperties([
       {
         name: 'createdAt',
@@ -162,7 +143,10 @@ export class StrapiSchemaV5Converter {
     ]);
   }
 
-  private addImportDeclarations(sourceFile: SourceFile, imports: ImportInfo[]) {
+  protected addImportDeclarations(
+    sourceFile: SourceFile,
+    imports: ImportInfo[]
+  ) {
     sourceFile.addImportDeclarations(
       imports.map(({ path, type }) => ({
         moduleSpecifier: path,
@@ -171,53 +155,74 @@ export class StrapiSchemaV5Converter {
     );
   }
 
-  private handleRelation(
+  protected handleRelation(
     attributeValue: RelationAttribute,
     imports: ImportInfo[]
   ): string {
     const targetType = attributeValue.target.includes('::user')
       ? 'User'
-      : pascalCase(attributeValue.target.split('.')[1]);
-    this.addImport(imports, targetType, `./${targetType}`);
+      : this.extractRelationName(attributeValue.target);
+    this.addImport(
+      imports,
+      targetType,
+      `${this.interfaceFolder}/${targetType}`
+    );
     const isArray = attributeValue.relation.endsWith('ToMany');
     return `${targetType}${isArray ? '[]' : ''}`;
   }
 
-  private handleComponent(
+  protected extractRelationName(originalName: string) {
+    return pascalCase(originalName.split('.').pop() ?? '');
+  }
+
+  protected handleComponent(
     attributeValue: ComponentAttribute,
     imports: ImportInfo[]
   ): string {
-    const componentType = pascalCase(attributeValue.component.split('.')[1]);
-    this.addImport(imports, componentType, `./components/${componentType}`);
+    const componentType = pascalCase(
+      this.extractRelationName(attributeValue.component)
+    );
+    this.addImport(
+      imports,
+      componentType,
+      `${this.componentsFolder}/${componentType}`
+    );
     const isArray = attributeValue.repeatable;
     return `${componentType}${isArray ? '[]' : ''}`;
   }
 
-  private handleDynamicZone(
+  protected handleDynamicZone(
     attributeValue: DynamicZoneAttribute,
     imports: ImportInfo[]
   ): string {
     const componentTypes =
       attributeValue.components?.map((componentName: string) =>
-        pascalCase(componentName.split('.')[1])
+        pascalCase(this.extractRelationName(componentName))
       ) ?? [];
     componentTypes.forEach((componentType) =>
-      this.addImport(imports, componentType, `./components/${componentType}`)
+      this.addImport(
+        imports,
+        componentType,
+        `${this.componentsFolder}/${componentType}`
+      )
     );
     // this is not correct for now , they are  i preleave wrapped in {id:string, __component: 'componentName'}
     return `${componentTypes.join(' | ')}[]`;
   }
 
-  private handleMedia(attributeValue: any, imports: ImportInfo[]): string {
-    this.addImport(imports, 'Media', `./Media`);
+  protected handleMedia(
+    attributeValue: MediaAttribute,
+    imports: ImportInfo[]
+  ): string {
+    this.addImport(imports, 'Media', `${this.interfaceFolder}/Media`);
     return `Media${attributeValue.multiple ? '[]' : ''}`;
   }
 
-  private handleEnumeration(attributeValue: any): string {
-    return attributeValue.enum.map((v: string) => `'${v}'`).join(' | ');
+  protected handleEnumeration(attributeValue: EnumerationAttribute): string {
+    return attributeValue.enum.map((value: string) => `'${value}'`).join(' | ');
   }
 
-  private addImport(imports: ImportInfo[], type: string, path: string) {
+  protected addImport(imports: ImportInfo[], type: string, path: string) {
     if (imports.every((x) => x.path !== path || x.type !== type)) {
       imports.push({ type, path });
     }

@@ -25,5 +25,5 @@ switch (config.strapiVersion) {
 generator.generateDefaultInterfaces();
 generator.generateCollections();
 generator.generateComponents();
-generator.generateSingleTypes();
-generator.generateRoutes();
+// generator.generateSingleTypes();
+// generator.generateRoutes();

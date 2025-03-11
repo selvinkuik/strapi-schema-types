@@ -2,7 +2,7 @@ import {
   Attribute,
   ComponentAttribute,
   RelationAttribute,
-  StrapiSchema
+  StrapiSchema,
 } from '#/types';
 import { readFile } from '#/utils/fs';
 import { join } from 'path';
@@ -13,7 +13,7 @@ export function readSchema(filePath: string): StrapiSchema {
   return JSON.parse(schemaContent) as StrapiSchema;
 }
 
-export function getSchemaFilePath(apiFolder: string): string {
+export function getApiSchemaFilePath(apiFolder: string): string {
   return join(
     v5SrcFolder.api,
     apiFolder,
@@ -21,6 +21,11 @@ export function getSchemaFilePath(apiFolder: string): string {
     apiFolder,
     'schema.json'
   );
+}
+
+export function getComponentSchemaFilePath(componentFilder: string): string {
+  return join(v5SrcFolder.components, componentFilder, 'schema.json');
+  // wronggg , multiple components in the same folder
 }
 
 export function isOptional(attributeValue: Attribute): boolean {

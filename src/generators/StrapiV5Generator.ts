@@ -1,17 +1,31 @@
 import { Config } from '#/Config';
-import { StrapiSchemaV5Converter } from '#/services/StrapiSchemaV5Converter';
-import { getApiFolders, readDirectory, readFile, writeFile } from '#/utils/fs';
-import { interfaceName } from '#/utils/naming';
+import { AbstractV5Converter } from '#/services/AbstractV5Converter';
+import {
+  getApiFolders,
+  readAllJSONFilesRecursively,
+  readDirectory,
+  readFile,
+  writeFile,
+} from '#/utils/fs';
+import { componentName, interfaceName } from '#/utils/naming';
 import { v5SrcFolder } from '#/utils/paths';
-import { getSchemaFilePath, readSchema } from '#/utils/schemaUtils';
+import {
+  getApiSchemaFilePath,
+  getComponentSchemaFilePath,
+  readSchema,
+} from '#/utils/schemaUtils';
 import { join, parse } from 'path';
 import { StrapiGenerator } from './StrapiGenerator';
+import { CollectionV5Converter } from '#/services/CollectionV5Converter';
+import { ComponentV5Converter } from '#/services/ComponentV5Converter';
 
 export class StrapiV5Generator extends StrapiGenerator {
-  converter: StrapiSchemaV5Converter;
+  collectionConverter: CollectionV5Converter;
+  componentConverter: ComponentV5Converter;
   constructor(private config: Config) {
     super(config);
-    this.converter = new StrapiSchemaV5Converter(this.config);
+    this.collectionConverter = new CollectionV5Converter(this.config);
+    this.componentConverter = new ComponentV5Converter(this.config);
   }
 
   generateDefaultInterfaces(): void {
@@ -37,14 +51,36 @@ export class StrapiV5Generator extends StrapiGenerator {
 
     for (const apiFolder of apiFolders) {
       const iname = interfaceName(this.config, apiFolder);
-      const schema = readSchema(getSchemaFilePath(apiFolder));
-      const interfaceContent = this.converter.generateInterfaceFromSchema(schema, iname);
+      const schema = readSchema(getApiSchemaFilePath(apiFolder));
+      const interfaceContent = this.collectionConverter.generateTSFromSchema(
+        schema,
+        iname
+      );
       writeFile(`${this.config.outputDir}/${iname}.ts`, interfaceContent);
     }
   }
 
   generateComponents(): void {
-    throw new Error('Method not implemented.');
+    let componentFolders: string[] = [];
+
+    componentFolders = getApiFolders(
+      readAllJSONFilesRecursively(v5SrcFolder.components)
+    );
+ 
+    for (const componentFolder of componentFolders) {
+      const iname = componentName(this.config, componentFolder);
+      console.log('componentFolder', iname);
+      const schema = readSchema(getComponentSchemaFilePath(componentFolder));
+
+      const interfaceContent = this.componentConverter.generateTSFromSchema(
+        schema,
+        iname
+      );
+      writeFile(
+        `${this.config.outputDir}/components/${iname}.ts`,
+        interfaceContent
+      );
+    }
   }
   generateSingleTypes(): void {
     throw new Error('Method not implemented.');
