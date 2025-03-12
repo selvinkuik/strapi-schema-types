@@ -4,11 +4,15 @@
   "description": "Typescript interface generator for Strapi schema",
   "main": "./dist/index.js",
   "types": "./dist/types.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "cp -r src/v5 dist && tsc",
+    "build": "pnpm clean && pnpm copy-templates && tsc && tsc-alias",
+    "copy-templates": "mkdirp -p dist/templates && cp -r src/templates dist",
     "prepare": "npm run build",
-    "watch": "pnpm build -w",
-    "format": "prettier --write src/**/*.ts"
+    "format": "prettier --write src/**/*.ts",
+    "clean": "rimraf dist"
   },
   "bin": {
     "sst": "./dist/index.js"
@@ -36,7 +40,10 @@
   },
   "devDependencies": {
     "@types/node": "^16.11.7",
+    "mkdirp": "^3.0.1",
     "prettier": "^3.5.2",
+    "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.11",
     "typescript": "^4.5.4"
   }
 }

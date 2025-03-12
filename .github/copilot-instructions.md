@@ -1,0 +1,1 @@
+Commit messages should follow conventional commits with a 40 to 50 character limit, using the format <type>: <subject>.

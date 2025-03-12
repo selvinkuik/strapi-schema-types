@@ -9,9 +9,14 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
-    "declaration": true
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["src/*"]
+    }
   },
   "types": ["./types/types.d.ts"],
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*", "src/types/index.ts"],
+
   "exclude": ["node_modules", "dist"]
 }

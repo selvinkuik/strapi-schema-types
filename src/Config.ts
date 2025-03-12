@@ -1,5 +1,8 @@
-interface Config {
+import { StrapiVersion } from "./StrapiVersion";
+
+export interface Config {
   prefix: string;
   outputDir: string;
-  sourceFolder: string;
+  templatesFolderPath: string;
+  strapiVersion: StrapiVersion;
 }

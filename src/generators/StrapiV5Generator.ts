@@ -1,49 +1,86 @@
+import { Config } from '#/Config';
+import { AbstractV5Converter } from '#/services/AbstractV5Converter';
+import {
+  getApiFolders,
+  readAllJSONFilesRecursively,
+  readDirectory,
+  readFile,
+  writeFile,
+} from '#/utils/fs';
+import { componentName, interfaceName } from '#/utils/naming';
+import { v5SrcFolder } from '#/utils/paths';
+import {
+  getApiSchemaFilePath,
+  getComponentSchemaFilePath,
+  readSchema,
+} from '#/utils/schemaUtils';
 import { join, parse } from 'path';
-import { readDirectory, readFile, writeFile } from '../utils/fs';
 import { StrapiGenerator } from './StrapiGenerator';
-import { pascalCase } from 'change-case';
+import { CollectionV5Converter } from '#/services/CollectionV5Converter';
+import { ComponentV5Converter } from '#/services/ComponentV5Converter';
 
 export class StrapiV5Generator extends StrapiGenerator {
+  collectionConverter: CollectionV5Converter;
+  componentConverter: ComponentV5Converter;
   constructor(private config: Config) {
     super(config);
+    this.collectionConverter = new CollectionV5Converter(this.config);
+    this.componentConverter = new ComponentV5Converter(this.config);
   }
 
   generateDefaultInterfaces(): void {
     try {
-      const v5Files = readDirectory(this.config.sourceFolder);
-      console.log('v5Files:', v5Files);
+      const v5Files = readDirectory(this.config.templatesFolderPath);
       v5Files.forEach((file) => {
         const fileName = parse(file).name;
-        console.log('fileNamesss:', fileName);
-        const fileContent = readFile(join(this.config.sourceFolder, file));
+        const fileContent = readFile(
+          join(this.config.templatesFolderPath, file)
+        );
+        // replace the prefix in the template with the actual prefix in $fileContent  fileName by '${prefix}${fileName}'
         writeFile(join(this.config.outputDir, `${fileName}.ts`), fileContent);
       });
     } catch (error) {
       console.error('Error generating types from v5 folder:', error);
     }
   }
+
   generateCollections(): void {
     let apiFolders: string[] = [];
 
-    apiFolders = readDirectory('./src/api').filter(
-      (directory) => !directory.startsWith('.')
-    );
+    apiFolders = getApiFolders(readDirectory(v5SrcFolder.api));
 
     for (const apiFolder of apiFolders) {
-      const interfaceName = `${this.config.prefix}${pascalCase(apiFolder)}`;
-      console.log('interfaceName:', interfaceName);
-      // const interfaceContent = createInterface(
-      //   `./src/api/${apiFolder}/content-types/${apiFolder}/schema.json`,
-      //   interfaceName,
-      //   isV5
-      // );
-      // if (interfaceContent)
-      //   fs.writeFileSync(`${outputDir}/${interfaceName}.ts`, interfaceContent);
+      const iname = interfaceName(this.config, apiFolder);
+      const schema = readSchema(getApiSchemaFilePath(apiFolder));
+      const interfaceContent = this.collectionConverter.generateTSFromSchema(
+        schema,
+        iname
+      );
+      writeFile(`${this.config.outputDir}/${iname}.ts`, interfaceContent);
     }
   }
 
   generateComponents(): void {
-    throw new Error('Method not implemented.');
+    let componentFolders: string[] = [];
+
+    componentFolders = getApiFolders(
+      readAllJSONFilesRecursively(v5SrcFolder.components)
+    );
+ 
+    for (const componentFolder of componentFolders) {
+      const iname = componentName(this.config, componentFolder);
+      console.log('componentFolder', iname);
+      const schema = readSchema(getComponentSchemaFilePath(componentFolder));
+
+      const interfaceContent = this.componentConverter.generateTSFromSchema(
+        schema,
+        iname
+      );
+      writeFile(
+        `${this.config.outputDir}/components/${iname}.ts`,
+        interfaceContent
+      );
+    }
   }
   generateSingleTypes(): void {
     throw new Error('Method not implemented.');
