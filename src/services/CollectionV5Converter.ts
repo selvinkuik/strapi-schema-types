@@ -23,7 +23,7 @@ export class CollectionV5Converter extends AbstractV5Converter {
     });
 
     this.addBaseProperties(interfaceDeclaration);
-    const { properties, imports } = this.extractPropertiesAndImports(schema);
+    const { properties, imports } = this.extractPropertiesAndImports(schema, interfaceName);
 
     this.addI18nProperties(schema, properties, interfaceName);
     interfaceDeclaration.addProperties(properties);

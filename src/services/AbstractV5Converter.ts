@@ -40,7 +40,7 @@ export class AbstractV5Converter {
       hasQuestionToken: hasQuestionToken,
     });
   }
-  protected extractPropertiesAndImports(schema: StrapiSchema): {
+  protected extractPropertiesAndImports(schema: StrapiSchema, selfTypeName?: string): {
     properties: PropertySignatureStructure[];
     imports: ImportInfo[];
   } {
@@ -49,7 +49,10 @@ export class AbstractV5Converter {
     const attributesEntries = Object.entries(schema.attributes);
 
     for (const [attributeName, attributeValue] of attributesEntries) {
-      const propertyType = this.resolvePropertyType(attributeValue, imports);
+      const propertyType =
+        attributeValue.type === 'relation'
+          ? this.handleRelation(attributeValue as RelationAttribute, imports, selfTypeName)
+          : this.resolvePropertyType(attributeValue, imports);
       this.createPropertySignature(
         properties,
         attributeName,
@@ -157,16 +160,20 @@ export class AbstractV5Converter {
 
   protected handleRelation(
     attributeValue: RelationAttribute,
-    imports: ImportInfo[]
+    imports: ImportInfo[],
+    selfTypeName?: string // new optional param
   ): string {
     const targetType = attributeValue.target.includes('::user')
       ? 'User'
       : this.extractRelationName(attributeValue.target);
-    this.addImport(
-      imports,
-      targetType,
-      `${this.interfaceFolder}/${targetType}`
-    );
+    // Only add import if not self-referencing
+    if (!selfTypeName || targetType !== selfTypeName) {
+      this.addImport(
+        imports,
+        targetType,
+        `${this.interfaceFolder}/${targetType}`
+      );
+    }
     const isArray = attributeValue.relation.endsWith('ToMany');
     return `${targetType}${isArray ? '[]' : ''}`;
   }
